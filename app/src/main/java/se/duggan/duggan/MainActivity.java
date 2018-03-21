@@ -13,30 +13,33 @@ import android.graphics.Bitmap;
 import android.view.View;
 import android.widget.ProgressBar;
 
+import org.apache.commons.lang3.StringUtils;
+
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
-    String ShowOrHideWebViewInitialUse = "show";
-    private WebView webview ;
+    private static final String dugganHttp = "http://www.duggan.se";
+    private static final String dugganHttps = "https://www.duggan.se";
+    private static final String[] dugganUrls = { dugganHttp, dugganHttps };
+
+    boolean isFirstPageStart = true;
     private ProgressBar spinner;
-    private WebView mWebView;
+    private WebView webView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        webview =(WebView)findViewById(R.id.webView);
-        spinner = (ProgressBar)findViewById(R.id.progressBar1);
-        webview.setWebViewClient(new CustomWebViewClient());
+        spinner = findViewById(R.id.progressBar1);
 
-        webview.getSettings().setJavaScriptEnabled(true);
-        webview.getSettings().setDomStorageEnabled(true);
-        webview.setOverScrollMode(WebView.OVER_SCROLL_NEVER);
-        webview.loadUrl("http://www.duggan.se");
-        mWebView = (WebView) findViewById(R.id.webView);
-
+        webView = findViewById(R.id.webView);
+        webView.setWebViewClient(new CustomWebViewClient());
+        webView.getSettings().setJavaScriptEnabled(true);
+        webView.getSettings().setDomStorageEnabled(true);
+        webView.setOverScrollMode(WebView.OVER_SCROLL_NEVER);
+        webView.loadUrl(dugganHttp);
     }
 
     //Back button
@@ -45,8 +48,8 @@ public class MainActivity extends AppCompatActivity {
         if (event.getAction() == KeyEvent.ACTION_DOWN) {
             switch (keyCode) {
                 case KeyEvent.KEYCODE_BACK:
-                    if (mWebView.canGoBack()) {
-                        mWebView.goBack();
+                    if (webView.canGoBack()) {
+                        webView.goBack();
                     } else {
                         finish();
                     }
@@ -57,48 +60,43 @@ public class MainActivity extends AppCompatActivity {
         return super.onKeyDown(keyCode, event);
     }
 
-
-
     // This allows for a splash screen
     // (and hide elements once the page loads)
     private class CustomWebViewClient extends WebViewClient {
 
         @Override
         public void onPageStarted(WebView webview, String url, Bitmap favicon) {
-
             // only make it invisible the FIRST time the app is run
-            if (ShowOrHideWebViewInitialUse.equals("show")) {
+            if (isFirstPageStart) {
                 webview.setVisibility(webview.INVISIBLE);
             }
         }
 
         @Override
         public void onPageFinished(WebView view, String url) {
-
-            ShowOrHideWebViewInitialUse = "hide";
+            isFirstPageStart = false;
             spinner.setVisibility(View.GONE);
-
-            view.setVisibility(webview.VISIBLE);
+            webView.setVisibility(View.VISIBLE);
             super.onPageFinished(view, url);
-
         }
 
         @Override
         public boolean shouldOverrideUrlLoading(WebView view, String url) {
-            if(url != null && !url.startsWith("http://www.duggan.se/")) {
-                Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
-
-                PackageManager packageManager = getPackageManager();
-                List<ResolveInfo> activities = packageManager.queryIntentActivities(intent, 0);
-
-                if (activities.size() > 0) {
-                    view.getContext().startActivity(intent);
-                }
-
-                return true;
-            }else {
+            // If this is a duggan page url, just view it in the webview
+            if(StringUtils.startsWithAny(url, dugganUrls)) {
                 return false;
             }
+
+            // Otherwise let it be handled by appropriate app or by the standard browser
+            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+
+            PackageManager packageManager = getPackageManager();
+            List<ResolveInfo> activities = packageManager.queryIntentActivities(intent, 0);
+
+            if (!activities.isEmpty()) {
+                view.getContext().startActivity(intent);
+            }
+            return true;
         }
 
     }
